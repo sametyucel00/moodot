@@ -7,7 +7,7 @@ Notifications.setNotificationHandler({
   handleNotification: async () => ({
     shouldShowBanner: true,
     shouldShowList: true,
-    shouldPlaySound: false,
+    shouldPlaySound: true,
     shouldSetBadge: false,
   }),
 });
@@ -36,7 +36,13 @@ export const notificationService = {
       return true;
     }
 
-    const asked = await Notifications.requestPermissionsAsync();
+    const asked = await Notifications.requestPermissionsAsync({
+      ios: {
+        allowAlert: true,
+        allowBadge: false,
+        allowSound: true,
+      },
+    });
     return asked.granted;
   },
 
@@ -63,6 +69,7 @@ export const notificationService = {
       content: {
         title: 'Moodot',
         body: getRandomReminderBody(),
+        sound: 'default',
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.DATE,

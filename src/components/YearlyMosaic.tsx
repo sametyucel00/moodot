@@ -1,5 +1,5 @@
 import React from 'react';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 
 import { COLORS } from '@/src/constants/theme';
 import { formatDateKey, getDaysInMonth, getWeekdayOffset } from '@/src/features/mood/dateUtils';
@@ -13,6 +13,10 @@ type Props = {
 const monthLabels = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
 export const YearlyMosaic = ({ year, entriesByDate }: Props) => {
+  const { width } = useWindowDimensions();
+  const isTablet = width >= 768;
+  const blockWidth = isTablet ? '31.5%' : '48.2%';
+
   return (
     <View style={styles.container}>
       {monthLabels.map((label, monthIndex) => {
@@ -30,7 +34,7 @@ export const YearlyMosaic = ({ year, entriesByDate }: Props) => {
         }
 
         return (
-          <View key={label} style={styles.monthBlock}>
+          <View key={label} style={[styles.monthBlock, { width: blockWidth }]}>
             <Text style={styles.monthLabel}>{label}</Text>
             <View style={styles.monthGrid}>
               {cells.map((cell, index) => {
@@ -59,13 +63,16 @@ export const YearlyMosaic = ({ year, entriesByDate }: Props) => {
 
 const styles = StyleSheet.create({
   container: {
-    gap: 12,
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 12,
   },
   monthBlock: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 14,
-    padding: 10,
+    borderRadius: 16,
+    padding: 12,
     backgroundColor: COLORS.card,
   },
   monthLabel: {
@@ -77,12 +84,12 @@ const styles = StyleSheet.create({
   monthGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    rowGap: 3,
-    columnGap: 3,
+    rowGap: 4,
+    columnGap: 4,
   },
   pixel: {
-    width: 10,
-    height: 10,
-    borderRadius: 3,
+    width: 11,
+    height: 11,
+    borderRadius: 3.5,
   },
 });

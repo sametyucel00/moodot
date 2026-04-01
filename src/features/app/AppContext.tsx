@@ -2,18 +2,16 @@ import React, { createContext, useContext, useEffect, useMemo, useState } from '
 import { User } from 'firebase/auth';
 
 import { DEFAULT_SETTINGS } from '@/src/constants/mood';
-import { adService } from '@/src/features/ads/adService';
 import { authService, AuthProviderLabel } from '@/src/features/auth/authService';
 import { getTodayKey } from '@/src/features/mood/dateUtils';
 import { moodService } from '@/src/features/mood/moodService';
 import { notificationService } from '@/src/features/notifications/notificationService';
 import { paletteService } from '@/src/features/palette/paletteService';
-import { subscriptionService } from '@/src/features/subscription/subscriptionService';
 import { FirestoreRemoteSyncRepository, createSyncService } from '@/src/features/sync/syncService';
 import { initDb } from '@/src/storage/db';
 import { moodEntryRepository } from '@/src/storage/repositories/moodEntryRepository';
 import { userSettingsRepository } from '@/src/storage/repositories/userSettingsRepository';
-import type { MoodEntry, MoodId, PremiumProductKind, PremiumProductOption, UserSettings } from '@/src/types';
+import type { MoodEntry, MoodId, UserSettings } from '@/src/types';
 
 type SyncState = {
   lastSyncedAt?: string;
@@ -44,9 +42,6 @@ type AppContextValue = {
   connectCloudAccount: () => Promise<void>;
   disconnectCloudAccount: () => Promise<void>;
   deletePremiumCloudAccount: () => Promise<void>;
-  premiumProducts: PremiumProductOption[];
-  refreshPremiumProducts: () => Promise<void>;
-  purchasePremium: (kind: PremiumProductKind) => Promise<boolean>;
   getEntryByDate: (date: string) => MoodEntry | undefined;
 };
 
@@ -59,26 +54,19 @@ const syncService = createSyncService({
 });
 
 const shouldSyncInBackground = (settings: UserSettings, user: User | null): boolean =>
-  settings.isPremium && settings.cloudSyncEnabled && !!user;
+  settings.cloudSyncEnabled && !!user;
 
 const normalizeDailyUnlockState = (settings: UserSettings): UserSettings => {
-  const today = getTodayKey();
-  const paletteUnlockDate = settings.adPaletteUnlockDate === today ? settings.adPaletteUnlockDate : undefined;
-  const premiumCardsUnlockDate =
-    settings.adPremiumCardsUnlockDate === today ? settings.adPremiumCardsUnlockDate : undefined;
-
   let selectedPaletteId = settings.selectedPaletteId;
   const selectedPalette = paletteService.getPaletteById(selectedPaletteId);
-  const hasPaletteAccess = settings.isPremium || paletteUnlockDate === today;
-  if (selectedPalette?.isPremium && !hasPaletteAccess) {
+  if (!selectedPalette) {
     selectedPaletteId = DEFAULT_SETTINGS.selectedPaletteId;
   }
 
   return {
     ...settings,
+    isPremium: true,
     selectedPaletteId,
-    adPaletteUnlockDate: paletteUnlockDate,
-    adPremiumCardsUnlockDate: premiumCardsUnlockDate,
   };
 };
 
@@ -89,7 +77,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [syncState, setSyncState] = useState<SyncState>({ inProgress: false });
   const [authUser, setAuthUser] = useState<User | null>(authService.getCurrentUser());
   const [authLoading, setAuthLoading] = useState(true);
-  const [premiumProducts, setPremiumProducts] = useState<PremiumProductOption[]>([]);
 
   const refreshAll = async () => {
     const [allEntries, userSettings] = await Promise.all([
@@ -105,11 +92,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     }));
   };
 
-  const refreshPremiumProducts = async () => {
-    const products = await subscriptionService.getPremiumProducts();
-    setPremiumProducts(products);
-  };
-
   const rescheduleReminder = async (nextSettings: UserSettings, nextEntries: MoodEntry[]) => {
     const hasTodayEntry = nextEntries.some((entry) => entry.date === getTodayKey());
 
@@ -122,7 +104,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const runSyncInternal = async (options?: { silent?: boolean; user?: User | null; force?: boolean }) => {
     const user = options?.user ?? authUser;
-    if (!settings.isPremium || !user || (!settings.cloudSyncEnabled && !options?.force)) {
+    if (!user || (!settings.cloudSyncEnabled && !options?.force)) {
       return;
     }
 
@@ -158,10 +140,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       try {
         await initDb();
 
-        await subscriptionService.initialize();
-        await adService.initialize();
-        const remotePremium = await subscriptionService.isPremiumActive();
-
         const [allEntries, userSettings] = await Promise.all([
           moodEntryRepository.getAll(),
           userSettingsRepository.get(),
@@ -169,20 +147,16 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
         const mergedSettings = normalizeDailyUnlockState({
           ...userSettings,
-          isPremium: remotePremium || userSettings.isPremium,
+          isPremium: true,
         });
 
         if (
           mergedSettings.isPremium !== userSettings.isPremium ||
-          mergedSettings.selectedPaletteId !== userSettings.selectedPaletteId ||
-          mergedSettings.adPaletteUnlockDate !== userSettings.adPaletteUnlockDate ||
-          mergedSettings.adPremiumCardsUnlockDate !== userSettings.adPremiumCardsUnlockDate
+          mergedSettings.selectedPaletteId !== userSettings.selectedPaletteId
         ) {
           await userSettingsRepository.update({
             isPremium: mergedSettings.isPremium,
             selectedPaletteId: mergedSettings.selectedPaletteId,
-            adPaletteUnlockDate: mergedSettings.adPaletteUnlockDate,
-            adPremiumCardsUnlockDate: mergedSettings.adPremiumCardsUnlockDate,
           });
         }
 
@@ -193,7 +167,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           lastSyncedAt: mergedSettings.cloudLastSyncedAt,
         }));
 
-        await refreshPremiumProducts();
         await rescheduleReminder(mergedSettings, allEntries);
       } catch (error) {
         console.error('App bootstrap failed:', error);
@@ -215,15 +188,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const saveTodayMood: AppContextValue['saveTodayMood'] = async ({ moodId, note }) => {
     const normalizedSettings = normalizeDailyUnlockState(settings);
-    if (
-      normalizedSettings.selectedPaletteId !== settings.selectedPaletteId ||
-      normalizedSettings.adPaletteUnlockDate !== settings.adPaletteUnlockDate ||
-      normalizedSettings.adPremiumCardsUnlockDate !== settings.adPremiumCardsUnlockDate
-    ) {
+    if (normalizedSettings.selectedPaletteId !== settings.selectedPaletteId) {
       await userSettingsRepository.update({
         selectedPaletteId: normalizedSettings.selectedPaletteId,
-        adPaletteUnlockDate: normalizedSettings.adPaletteUnlockDate,
-        adPremiumCardsUnlockDate: normalizedSettings.adPremiumCardsUnlockDate,
       });
       setSettings(normalizedSettings);
     }
@@ -275,10 +242,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const connectCloudAccount = async () => {
-    if (!settings.isPremium) {
-      throw new Error('Cloud sync is available with Premium.');
-    }
-
     const signedInUser = await authService.signInForPlatform();
     await userSettingsRepository.update({ cloudSyncEnabled: true });
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
@@ -294,9 +257,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   };
 
   const deletePremiumCloudAccount = async () => {
-    if (!settings.isPremium) {
-      throw new Error('Account deletion is available for Premium users.');
-    }
     const user = authService.getCurrentUser();
     if (!user) {
       throw new Error('No connected account found.');
@@ -311,19 +271,6 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
     setSettings(nextSettings);
     setSyncState({ inProgress: false });
-  };
-
-  const purchasePremium = async (kind: PremiumProductKind) => {
-    const premium = await subscriptionService.purchasePremium(kind);
-    if (!premium) {
-      return false;
-    }
-
-    await userSettingsRepository.update({ isPremium: true });
-    const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
-    setSettings(nextSettings);
-    await refreshPremiumProducts();
-    return true;
   };
 
   const getEntryByDate = (date: string) => {
@@ -356,12 +303,9 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       connectCloudAccount,
       disconnectCloudAccount,
       deletePremiumCloudAccount,
-      premiumProducts,
-      refreshPremiumProducts,
-      purchasePremium,
       getEntryByDate,
     }),
-    [loading, entries, settings, syncState, authState, premiumProducts],
+    [loading, entries, settings, syncState, authState],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -5,15 +5,6 @@ if (-not (Test-Path '.env')) {
 }
 
 $secretNames = @(
-  'ADMOB_ANDROID_APP_ID',
-  'ADMOB_IOS_APP_ID',
-  'EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID',
-  'EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID',
-  'EXPO_PUBLIC_REVENUECAT_API_KEY_IOS',
-  'EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID',
-  'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_MONTHLY',
-  'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_YEARLY',
-  'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_LIFETIME',
   'EXPO_PUBLIC_FIREBASE_API_KEY',
   'EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN',
   'EXPO_PUBLIC_FIREBASE_DATABASE_URL',
@@ -49,10 +40,6 @@ foreach ($name in $secretNames) {
   Write-Host "Setting EAS env: $name"
   $success = $false
   $visibility = 'sensitive'
-
-  if ($name -eq 'ADMOB_ANDROID_APP_ID' -or $name -eq 'ADMOB_IOS_APP_ID') {
-    $visibility = 'plaintext'
-  }
 
   for ($attempt = 1; $attempt -le 5; $attempt++) {
     npx eas-cli@latest env:create --name $name --value $value --environment production --visibility $visibility --non-interactive --force

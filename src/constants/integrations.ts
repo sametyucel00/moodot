@@ -7,45 +7,6 @@ const readPublic = (value: string | undefined, fallback: string, key: string): s
 };
 
 export const INTEGRATIONS = {
-  admob: {
-    rewardedAdUnitIdAndroid: readPublic(
-      process.env.EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID,
-      'ca-app-pub-7422131853794926/7278716290',
-      'EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID',
-    ),
-    rewardedAdUnitIdIOS: readPublic(
-      process.env.EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID,
-      'ca-app-pub-7422131853794926/1810767196',
-      'EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID',
-    ),
-  },
-  revenueCat: {
-    apiKeyIOS: readPublic(
-      process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_IOS,
-      'appl_pMzObikfxHAqUtUJpjeEqeyQzyZ',
-      'EXPO_PUBLIC_REVENUECAT_API_KEY_IOS',
-    ),
-    apiKeyAndroid: readPublic(
-      process.env.EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID,
-      'goog_TXWyhepaakGSWPDLDOCgddrqoFv',
-      'EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID',
-    ),
-    monthlyProductId: readPublic(
-      process.env.EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_MONTHLY,
-      'proj24acd7ca_monthly',
-      'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_MONTHLY',
-    ),
-    yearlyProductId: readPublic(
-      process.env.EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_YEARLY,
-      'proj24acd7ca_yearly',
-      'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_YEARLY',
-    ),
-    lifetimeProductId: readPublic(
-      process.env.EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_LIFETIME,
-      'proj24acd7ca_lifetime',
-      'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_LIFETIME',
-    ),
-  },
   firebase: {
     apiKey: readPublic(
       process.env.EXPO_PUBLIC_FIREBASE_API_KEY,

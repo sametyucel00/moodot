@@ -47,15 +47,3 @@ export type UserSettings = {
   adPaletteUnlockDate?: string;
   adPremiumCardsUnlockDate?: string;
 };
-
-export type PremiumProductKind = 'monthly' | 'yearly' | 'lifetime';
-
-export type PremiumProductOption = {
-  kind: PremiumProductKind;
-  productId: string;
-  title: string;
-  subtitle: string;
-  badge?: string;
-  isSubscription: boolean;
-  price?: string;
-};

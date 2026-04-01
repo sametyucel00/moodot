@@ -5,7 +5,7 @@ import { AppSplash } from '@/src/components/AppSplash';
 import { useAppContext } from '@/src/features/app/AppContext';
 
 export default function IndexRoute() {
-  const { loading } = useAppContext();
+  const { loading, needsOnboarding } = useAppContext();
   const [minSplashDone, setMinSplashDone] = React.useState(false);
 
   React.useEffect(() => {
@@ -17,5 +17,5 @@ export default function IndexRoute() {
     return <AppSplash />;
   }
 
-  return <Redirect href="/(tabs)/today" />;
+  return <Redirect href={needsOnboarding ? '/onboarding' : '/(tabs)/today'} />;
 }

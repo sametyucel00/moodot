@@ -33,16 +33,20 @@ export const MonthlyMosaic = ({ year, month, entriesByDate, onPressDay }: Props)
     <View>
       <View style={styles.weekdayRow}>
         {weekdayLabels.map((label, index) => (
-          <Text key={`${label}-${index}`} style={styles.weekdayText}>
-            {label}
-          </Text>
+          <View key={`${label}-${index}`} style={styles.weekdayCell}>
+            <Text style={styles.weekdayText}>{label}</Text>
+          </View>
         ))}
       </View>
 
       <View style={styles.grid}>
         {cells.map((cell, index) => {
           if (!cell.date || !cell.day) {
-            return <View key={`empty-${index}`} style={styles.cell} />;
+            return (
+              <View key={`empty-${index}`} style={styles.cellWrap}>
+                <View style={[styles.cell, styles.emptyCell]} />
+              </View>
+            );
           }
 
           const entry = entriesByDate[cell.date];
@@ -69,40 +73,44 @@ export const MonthlyMosaic = ({ year, month, entriesByDate, onPressDay }: Props)
 const styles = StyleSheet.create({
   weekdayRow: {
     flexDirection: 'row',
-    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 4,
+  },
+  weekdayCell: {
+    width: '14.2857%',
+    paddingVertical: 4,
   },
   weekdayText: {
-    width: '14.2857%',
     textAlign: 'center',
     color: COLORS.textSecondary,
     fontSize: 11,
-    marginBottom: 8,
+    fontWeight: '600',
   },
   grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    justifyContent: 'space-between',
+    alignItems: 'flex-start',
   },
   cellWrap: {
     width: '14.2857%',
     aspectRatio: 1,
-    padding: 2,
+    padding: 3,
   },
   cell: {
     flex: 1,
-    borderRadius: 8,
+    borderRadius: 12,
     borderWidth: 1,
     borderColor: '#ECECEC',
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: 36,
+    minHeight: 40,
   },
   emptyCell: {
-    backgroundColor: '#F7F7F7',
-    borderStyle: 'dashed',
+    backgroundColor: '#FAF7F4',
+    borderStyle: 'solid',
   },
   dayText: {
-    fontSize: 10,
+    fontSize: 11,
     color: '#4A4A4A',
     fontWeight: '600',
   },

@@ -23,10 +23,7 @@ export default function OnboardingScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
 
-  const availablePalettes = useMemo(
-    () => paletteService.getAvailablePalettes(settings.isPremium),
-    [settings.isPremium],
-  );
+  const availablePalettes = useMemo(() => paletteService.getAvailablePalettes(), []);
 
   const [selectedPaletteId, setSelectedPaletteId] = useState(settings.selectedPaletteId);
   const [notificationsEnabled, setNotificationsEnabled] = useState(settings.notificationsEnabled);
@@ -74,67 +71,69 @@ export default function OnboardingScreen() {
         },
       ]}
     >
-      <Text style={styles.brand}>{APP_COPY.name}</Text>
-      <Text style={styles.subtitle}>{APP_COPY.subtitle}</Text>
-      <Text style={styles.description}>Set your preferences once. You can change all of them later in Profile.</Text>
+      <View style={styles.content}>
+        <Text style={styles.brand}>{APP_COPY.name}</Text>
+        <Text style={styles.subtitle}>{APP_COPY.subtitle}</Text>
+        <Text style={styles.description}>Set your preferences once. You can change all of them later in Profile.</Text>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Palette</Text>
-        {availablePalettes.map((palette) => {
-          const selected = selectedPaletteId === palette.id;
-          return (
-            <Pressable
-              key={palette.id}
-              onPress={() => setSelectedPaletteId(palette.id)}
-              style={[styles.paletteRow, selected && styles.paletteRowSelected]}
-            >
-              <Text style={styles.paletteName}>{palette.name}</Text>
-              <View style={styles.paletteDots}>
-                {palette.colors.map((color) => (
-                  <View key={`${palette.id}-${color.moodId}`} style={[styles.dot, { backgroundColor: color.hex }]} />
-                ))}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Reminder</Text>
-        <View style={styles.row}>
-          <Text style={styles.label}>Enable notifications</Text>
-          <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Palette</Text>
+          {availablePalettes.map((palette) => {
+            const selected = selectedPaletteId === palette.id;
+            return (
+              <Pressable
+                key={palette.id}
+                onPress={() => setSelectedPaletteId(palette.id)}
+                style={[styles.paletteRow, selected && styles.paletteRowSelected]}
+              >
+                <Text style={styles.paletteName}>{palette.name}</Text>
+                <View style={styles.paletteDots}>
+                  {palette.colors.map((color) => (
+                    <View key={`${palette.id}-${color.moodId}`} style={[styles.dot, { backgroundColor: color.hex }]} />
+                  ))}
+                </View>
+              </Pressable>
+            );
+          })}
         </View>
 
-        <View style={styles.row}>
-          <Text style={styles.label}>Reminder time: {reminderTime}</Text>
-          <View style={styles.timeControls}>
-            <Pressable style={styles.timeButton} onPress={() => setReminderTime(shiftReminder(reminderTime, -30))}>
-              <Text style={styles.timeButtonText}>-30m</Text>
-            </Pressable>
-            <Pressable style={styles.timeButton} onPress={() => setReminderTime(shiftReminder(reminderTime, 30))}>
-              <Text style={styles.timeButtonText}>+30m</Text>
-            </Pressable>
+        <View style={styles.card}>
+          <Text style={styles.sectionTitle}>Reminder</Text>
+          <View style={styles.row}>
+            <Text style={styles.label}>Enable notifications</Text>
+            <Switch value={notificationsEnabled} onValueChange={setNotificationsEnabled} />
+          </View>
+
+          <View style={styles.row}>
+            <Text style={styles.label}>Reminder time: {reminderTime}</Text>
+            <View style={styles.timeControls}>
+              <Pressable style={styles.timeButton} onPress={() => setReminderTime(shiftReminder(reminderTime, -30))}>
+                <Text style={styles.timeButtonText}>-30m</Text>
+              </Pressable>
+              <Pressable style={styles.timeButton} onPress={() => setReminderTime(shiftReminder(reminderTime, 30))}>
+                <Text style={styles.timeButtonText}>+30m</Text>
+              </Pressable>
+            </View>
           </View>
         </View>
-      </View>
 
-      <View style={styles.footerActions}>
-        <Pressable
-          style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]}
-          onPress={handleSkip}
-          disabled={saving}
-        >
-          <Text style={styles.skipText}>Skip</Text>
-        </Pressable>
+        <View style={styles.footerActions}>
+          <Pressable
+            style={({ pressed }) => [styles.skipButton, pressed && styles.pressed]}
+            onPress={handleSkip}
+            disabled={saving}
+          >
+            <Text style={styles.skipText}>Skip</Text>
+          </Pressable>
 
-        <Pressable
-          style={({ pressed }) => [styles.continueButton, pressed && styles.pressed, saving && styles.buttonDisabled]}
-          onPress={handleContinue}
-          disabled={saving}
-        >
-          <Text style={styles.continueText}>{saving ? 'Saving...' : 'Continue'}</Text>
-        </Pressable>
+          <Pressable
+            style={({ pressed }) => [styles.continueButton, pressed && styles.pressed, saving && styles.buttonDisabled]}
+            onPress={handleContinue}
+            disabled={saving}
+          >
+            <Text style={styles.continueText}>{saving ? 'Saving...' : 'Continue'}</Text>
+          </Pressable>
+        </View>
       </View>
     </ScrollView>
   );
@@ -143,7 +142,13 @@ export default function OnboardingScreen() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: COLORS.background,
+    alignItems: 'center',
     padding: 16,
+    gap: 12,
+  },
+  content: {
+    width: '100%',
+    maxWidth: 720,
     gap: 12,
   },
   brand: {

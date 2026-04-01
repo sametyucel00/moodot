@@ -1,18 +1,16 @@
 import React from 'react';
-import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 
 import { ConfirmationSheet } from '@/src/components/ConfirmationSheet';
 import { MonthlyMosaic } from '@/src/components/MonthlyMosaic';
-import { PremiumPlanPicker } from '@/src/components/PremiumPlanPicker';
 import { YearlyMosaic } from '@/src/components/YearlyMosaic';
 import { COLORS } from '@/src/constants/theme';
-import { adService } from '@/src/features/ads/adService';
 import { useAppContext } from '@/src/features/app/AppContext';
 import { exportService } from '@/src/features/export/exportService';
-import { fromHourMinuteToTime, fromTimeToHourMinute, getTodayKey } from '@/src/features/mood/dateUtils';
+import { fromHourMinuteToTime, fromTimeToHourMinute } from '@/src/features/mood/dateUtils';
 import { noticeService } from '@/src/features/notice/noticeService';
 import { paletteService } from '@/src/features/palette/paletteService';
 
@@ -52,8 +50,6 @@ export default function ProfileScreen() {
     updateSettings,
     runSync,
     syncState,
-    premiumProducts,
-    purchasePremium,
     authState,
     connectCloudAccount,
     disconnectCloudAccount,
@@ -62,21 +58,16 @@ export default function ProfileScreen() {
   } = useAppContext();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
-  const availablePalettes = paletteService.getAllPalettes();
-  const supportsRewardUnlocks = Platform.OS !== 'ios';
-  const [unlockingPaletteId, setUnlockingPaletteId] = React.useState<string | null>(null);
-  const [unlockingExportCards, setUnlockingExportCards] = React.useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = React.useState(false);
   const [deletingAccount, setDeletingAccount] = React.useState(false);
-  const [purchaseBusyKind, setPurchaseBusyKind] = React.useState<'monthly' | 'yearly' | 'lifetime' | null>(null);
-  const todayKey = getTodayKey();
+  const [exportBusy, setExportBusy] = React.useState<'month' | 'monthHd' | 'year' | 'yearHd' | 'shareMonth' | 'shareYear' | null>(null);
+  const availablePalettes = paletteService.getAllPalettes();
   const now = new Date();
   const month = now.getMonth();
   const year = now.getFullYear();
   const monthlyRef = React.useRef<ViewShot>(null);
   const yearlyRef = React.useRef<ViewShot>(null);
-  const hasPremiumExportCardsAccess = settings.isPremium || settings.adPremiumCardsUnlockDate === todayKey;
-  const canShareCards = hasPremiumExportCardsAccess;
+
   const entriesByDate = React.useMemo(
     () =>
       entries.reduce<Record<string, (typeof entries)[number]>>((acc, entry) => {
@@ -89,154 +80,36 @@ export default function ProfileScreen() {
   const providerLabel =
     authState.provider === 'apple' ? 'Apple' : authState.provider === 'google' ? 'Google' : 'Account';
 
-  const startPremiumPurchase = async (
-    kind: 'monthly' | 'yearly' | 'lifetime',
-    successMessage = 'Premium unlocked.',
+  const shareExport = async (
+    key: NonNullable<typeof exportBusy>,
+    ref: React.RefObject<ViewShot | null>,
+    quality: 'standard' | 'hd',
+    dialogTitle: string,
   ) => {
-    setPurchaseBusyKind(kind);
-    try {
-      const ok = await purchasePremium(kind);
-      noticeService.show(ok ? successMessage : 'Purchase not completed.', ok ? 'success' : 'error');
-      return ok;
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Premium purchase failed.';
-      noticeService.show(message, 'error');
-      return false;
-    } finally {
-      setPurchaseBusyKind(null);
-    }
-  };
-
-  const unlockPremiumExportCards = async () => {
-    if (!supportsRewardUnlocks) {
-      await startPremiumPurchase('yearly');
+    if (!ref.current) {
+      noticeService.show('Export preview is still preparing.', 'error');
       return;
     }
 
-    if (settings.isPremium || hasPremiumExportCardsAccess || unlockingExportCards) {
-      return;
-    }
-
-    setUnlockingExportCards(true);
     try {
-      const unlocked = await adService.showRewardedAd();
-      if (!unlocked) {
-        noticeService.show('Reward not completed.', 'info');
+      setExportBusy(key);
+      const uri = await exportService.exportMosaicFromView({
+        viewRef: ref,
+        quality,
+      });
+
+      if (!(await Sharing.isAvailableAsync())) {
+        noticeService.show('Sharing is not available on this device.', 'error');
         return;
       }
-      await updateSettings({ adPremiumCardsUnlockDate: todayKey });
-      noticeService.show('Premium export cards unlocked for today.', 'success');
-    } catch {
-      noticeService.show('Could not unlock export cards right now.', 'error');
+
+      await Sharing.shareAsync(uri, { dialogTitle });
+      noticeService.show('Export ready.', 'success');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Export failed.';
+      noticeService.show(message, 'error');
     } finally {
-      setUnlockingExportCards(false);
-    }
-  };
-
-  const exportMonthly = async (quality: 'standard' | 'hd') => {
-    if (!monthlyRef.current) {
-      noticeService.show('Monthly export is not ready yet.', 'error');
-      return;
-    }
-
-    if (Platform.OS === 'ios' && quality === 'hd' && !settings.isPremium) {
-      const purchased = await startPremiumPurchase('yearly', 'Premium unlocked. HD export is now available.');
-      if (!purchased) {
-        return;
-      }
-    }
-
-    try {
-      const uri = await exportService.exportMosaicFromView({
-        viewRef: monthlyRef,
-        quality,
-        isPremium: settings.isPremium,
-        unlockHdWithAd: () => adService.showRewardedForHdExport(),
-      });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          dialogTitle: quality === 'hd' ? 'Export Monthly HD' : 'Export Monthly',
-        });
-      }
-      noticeService.show(quality === 'hd' ? 'Monthly HD export ready.' : 'Monthly export ready.', 'success');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Monthly export failed.';
-      noticeService.show(message, 'error');
-    }
-  };
-
-  const shareMonthly = async () => {
-    if (!monthlyRef.current || !(await Sharing.isAvailableAsync())) {
-      noticeService.show('Sharing is not available on this device.', 'error');
-      return;
-    }
-    if (!canShareCards) {
-      noticeService.show('Unlock premium share cards for today first.', 'info');
-      return;
-    }
-
-    try {
-      const uri = await exportService.exportMosaicFromView({
-        viewRef: monthlyRef,
-        quality: 'hd',
-        isPremium: settings.isPremium,
-        unlockHdWithAd: () => adService.showRewardedForHdExport(),
-      });
-      await Sharing.shareAsync(uri, { dialogTitle: 'Share your month in colors' });
-    } catch {
-      noticeService.show('Monthly share failed.', 'error');
-    }
-  };
-
-  const exportYearly = async (quality: 'standard' | 'hd') => {
-    if (!yearlyRef.current) {
-      noticeService.show('Yearly export is not ready yet.', 'error');
-      return;
-    }
-    if (!hasPremiumExportCardsAccess) {
-      noticeService.show('Unlock premium export cards for today first.', 'info');
-      return;
-    }
-
-    try {
-      const uri = await exportService.exportMosaicFromView({
-        viewRef: yearlyRef,
-        quality,
-        isPremium: settings.isPremium,
-        unlockHdWithAd: () => adService.showRewardedForHdExport(),
-      });
-      if (await Sharing.isAvailableAsync()) {
-        await Sharing.shareAsync(uri, {
-          dialogTitle: quality === 'hd' ? 'Export Yearly HD' : 'Export Yearly',
-        });
-      }
-      noticeService.show(quality === 'hd' ? 'Yearly HD export ready.' : 'Yearly export ready.', 'success');
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Yearly export failed.';
-      noticeService.show(message, 'error');
-    }
-  };
-
-  const shareYearly = async () => {
-    if (!yearlyRef.current || !(await Sharing.isAvailableAsync())) {
-      noticeService.show('Sharing is not available on this device.', 'error');
-      return;
-    }
-    if (!hasPremiumExportCardsAccess) {
-      noticeService.show('Unlock premium export cards for today first.', 'info');
-      return;
-    }
-
-    try {
-      const uri = await exportService.exportMosaicFromView({
-        viewRef: yearlyRef,
-        quality: 'hd',
-        isPremium: settings.isPremium,
-        unlockHdWithAd: () => adService.showRewardedForHdExport(),
-      });
-      await Sharing.shareAsync(uri, { dialogTitle: 'Share your year in colors' });
-    } catch {
-      noticeService.show('Yearly share failed.', 'error');
+      setExportBusy(null);
     }
   };
 
@@ -251,8 +124,13 @@ export default function ProfileScreen() {
         },
       ]}
     >
-      <View style={styles.listCard}>
-        <Section title="Preferences" description="Keep your daily journaling simple and familiar.">
+      <View style={styles.content}>
+        <View style={styles.heroCard}>
+          <Text style={styles.heroEyebrow}>Profile</Text>
+          <Text style={styles.heroTitle}>Keep the app personal, quiet, and ready across your devices.</Text>
+        </View>
+
+        <Section title="Preferences" description="Daily setup that feels calm on both iPhone and iPad.">
           <Row
             label="Notifications"
             right={
@@ -285,102 +163,83 @@ export default function ProfileScreen() {
 
           <View style={styles.paletteBlock}>
             <Text style={styles.rowLabel}>Palette</Text>
-          <View style={styles.paletteRows}>
-            {availablePalettes.map((palette) => {
-              const unlockedForToday = settings.adPaletteUnlockDate === todayKey;
-              const locked = palette.isPremium && !settings.isPremium && !unlockedForToday;
-              const selected = settings.selectedPaletteId === palette.id;
-              return (
-                <Pressable
-                  key={palette.id}
-                  style={[styles.paletteRow, selected && styles.paletteRowSelected]}
-                  onPress={async () => {
-                    if (locked) {
-                      if (!supportsRewardUnlocks) {
-                        const purchased = await startPremiumPurchase('yearly');
-                        if (purchased) {
-                          await updateSettings({ selectedPaletteId: palette.id });
-                        }
-                        return;
-                      }
-                      if (unlockingPaletteId) {
-                        return;
-                      }
-                      setUnlockingPaletteId(palette.id);
-                      try {
-                        const unlocked = await adService.showRewardedAd();
-                        if (!unlocked) {
-                          noticeService.show('Reward not completed.', 'info');
-                          return;
-                        }
-                        await updateSettings({
-                          adPaletteUnlockDate: todayKey,
-                          selectedPaletteId: palette.id,
-                        });
-                        noticeService.show('Palette unlocked for today.', 'success');
-                      } catch {
-                        noticeService.show('Could not unlock palette right now.', 'error');
-                      } finally {
-                        setUnlockingPaletteId(null);
-                      }
-                      return;
-                    }
-                    updateSettings({ selectedPaletteId: palette.id });
-                  }}
-                >
-                  <Text style={styles.paletteName}>{palette.name}</Text>
-                  <Text style={styles.paletteMeta}>
-                    {locked
-                      ? supportsRewardUnlocks
-                        ? unlockingPaletteId === palette.id
-                          ? 'Unlocking...'
-                          : 'Watch ad (1 day)'
-                        : purchaseBusyKind
-                          ? 'Opening...'
-                          : 'Premium only'
-                      : palette.isPremium && !settings.isPremium
-                        ? 'Unlocked today'
-                        : 'Available'}
-                  </Text>
-                </Pressable>
-              );
-            })}
+            <View style={styles.paletteRows}>
+              {availablePalettes.map((palette) => {
+                const selected = settings.selectedPaletteId === palette.id;
+                return (
+                  <Pressable
+                    key={palette.id}
+                    style={[styles.paletteRow, selected && styles.paletteRowSelected]}
+                    onPress={() => updateSettings({ selectedPaletteId: palette.id })}
+                  >
+                    <Text style={styles.paletteName}>{palette.name}</Text>
+                    <Text style={styles.paletteMeta}>{selected ? 'Selected' : 'Available'}</Text>
+                  </Pressable>
+                );
+              })}
+            </View>
           </View>
-          </View>
-
-          <Row
-            label="Premium status"
-            right={
-              settings.isPremium ? (
-                <Text style={styles.statusText}>Active</Text>
-              ) : (
-                <Pressable
-                  style={styles.smallButton}
-                  disabled={!!purchaseBusyKind}
-                  onPress={() => void startPremiumPurchase('yearly')}
-                >
-                  <Text style={styles.smallButtonText}>{purchaseBusyKind ? 'Please wait' : 'Unlock'}</Text>
-                </Pressable>
-              )
-            }
-          />
         </Section>
 
-        <Section title="Cloud Backup & Sync" description="Back up your colors and restore them across devices.">
-          {!settings.isPremium ? (
+        <Section title="Export" description="Create polished snapshots without leaving the quiet feel of the app.">
+          <Text style={styles.exportTitle}>Month</Text>
+          <View style={styles.exportActions}>
+            <Pressable
+              style={styles.smallButton}
+              disabled={!!exportBusy}
+              onPress={() => void shareExport('month', monthlyRef, 'standard', 'Export Month')}
+            >
+              <Text style={styles.smallButtonText}>{exportBusy === 'month' ? 'Preparing...' : 'Export'}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.smallButton}
+              disabled={!!exportBusy}
+              onPress={() => void shareExport('monthHd', monthlyRef, 'hd', 'Export Month HD')}
+            >
+              <Text style={styles.smallButtonText}>{exportBusy === 'monthHd' ? 'Preparing...' : 'HD Export'}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.smallButton}
+              disabled={!!exportBusy}
+              onPress={() => void shareExport('shareMonth', monthlyRef, 'hd', 'Share your month in colors')}
+            >
+              <Text style={styles.smallButtonText}>{exportBusy === 'shareMonth' ? 'Preparing...' : 'Share'}</Text>
+            </Pressable>
+          </View>
+
+          <Text style={styles.exportTitle}>Year</Text>
+          <View style={styles.exportActions}>
+            <Pressable
+              style={styles.smallButton}
+              disabled={!!exportBusy}
+              onPress={() => void shareExport('year', yearlyRef, 'standard', 'Export Year')}
+            >
+              <Text style={styles.smallButtonText}>{exportBusy === 'year' ? 'Preparing...' : 'Export'}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.smallButton}
+              disabled={!!exportBusy}
+              onPress={() => void shareExport('yearHd', yearlyRef, 'hd', 'Export Year HD')}
+            >
+              <Text style={styles.smallButtonText}>{exportBusy === 'yearHd' ? 'Preparing...' : 'HD Export'}</Text>
+            </Pressable>
+            <Pressable
+              style={styles.smallButton}
+              disabled={!!exportBusy}
+              onPress={() => void shareExport('shareYear', yearlyRef, 'hd', 'Share your year in colors')}
+            >
+              <Text style={styles.smallButtonText}>{exportBusy === 'shareYear' ? 'Preparing...' : 'Share'}</Text>
+            </Pressable>
+          </View>
+        </Section>
+
+        <Section
+          title="Cloud Backup & Sync"
+          description="At the bottom by design, so the daily experience stays simple and the account layer stays quiet."
+        >
+          {!authState.isSignedIn ? (
             <>
-              <Text style={styles.syncMessage}>Cloud backup is available with Premium.</Text>
-              <PremiumPlanPicker
-                products={premiumProducts}
-                busyKind={purchaseBusyKind}
-                compact
-                onSelect={(kind) => void startPremiumPurchase(kind)}
-              />
-            </>
-          ) : !authState.isSignedIn ? (
-            <>
-              <Text style={styles.syncMessage}>Connect your account to sync across devices.</Text>
-              <Text style={styles.syncSubtext}>Back up your colors and restore them across devices.</Text>
+              <Text style={styles.syncMessage}>Connect your account to back up colors and restore them across iPhone and iPad.</Text>
               <Pressable
                 style={styles.smallButton}
                 disabled={authState.loading}
@@ -421,7 +280,6 @@ export default function ProfileScreen() {
                 >
                   <Text style={styles.smallButtonText}>{syncState.inProgress ? 'Syncing' : 'Sync now'}</Text>
                 </Pressable>
-
                 <Pressable
                   style={styles.smallButton}
                   onPress={async () => {
@@ -436,10 +294,7 @@ export default function ProfileScreen() {
                 >
                   <Text style={styles.smallButtonText}>Sign out</Text>
                 </Pressable>
-                <Pressable
-                  style={[styles.smallButton, styles.dangerButton]}
-                  onPress={() => setDeleteModalVisible(true)}
-                >
+                <Pressable style={[styles.smallButton, styles.dangerButton]} onPress={() => setDeleteModalVisible(true)}>
                   <Text style={[styles.smallButtonText, styles.dangerText]}>Delete account</Text>
                 </Pressable>
               </View>
@@ -447,102 +302,29 @@ export default function ProfileScreen() {
           )}
         </Section>
 
-        <Section title="Export" description="Create and share polished monthly and yearly snapshots.">
-          {!hasPremiumExportCardsAccess ? (
-            <Pressable
-              style={styles.smallButton}
-              disabled={unlockingExportCards || !!purchaseBusyKind}
-              onPress={unlockPremiumExportCards}
-            >
-              <Text style={styles.smallButtonText}>
-                {supportsRewardUnlocks
-                  ? unlockingExportCards
-                    ? 'Unlocking...'
-                    : 'Watch Ad Unlock Share + Yearly (1 day)'
-                  : purchaseBusyKind
-                    ? 'Please wait'
-                    : 'Unlock Premium'}
-              </Text>
-            </Pressable>
-          ) : null}
-
-          <Text style={styles.exportTitle}>This Month</Text>
-          <View style={styles.exportActions}>
-            <Pressable style={styles.smallButton} onPress={() => exportMonthly('standard')}>
-              <Text style={styles.smallButtonText}>Export</Text>
-            </Pressable>
-            <Pressable style={styles.smallButton} onPress={() => exportMonthly('hd')}>
-              <Text style={styles.smallButtonText}>HD Export</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.smallButton, !canShareCards && styles.disabledButton]}
-              onPress={shareMonthly}
-              disabled={!canShareCards}
-            >
-              <Text style={styles.smallButtonText}>Share</Text>
-            </Pressable>
-          </View>
-
-          <Text style={styles.exportTitle}>This Year</Text>
-          <View style={styles.exportActions}>
-            <Pressable
-              style={[styles.smallButton, !hasPremiumExportCardsAccess && styles.disabledButton]}
-              onPress={() => exportYearly('standard')}
-              disabled={!hasPremiumExportCardsAccess}
-            >
-              <Text style={styles.smallButtonText}>Export</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.smallButton, !hasPremiumExportCardsAccess && styles.disabledButton]}
-              onPress={() => exportYearly('hd')}
-              disabled={!hasPremiumExportCardsAccess}
-            >
-              <Text style={styles.smallButtonText}>HD Export</Text>
-            </Pressable>
-            <Pressable
-              style={[styles.smallButton, !hasPremiumExportCardsAccess && styles.disabledButton]}
-              onPress={shareYearly}
-              disabled={!hasPremiumExportCardsAccess}
-            >
-              <Text style={styles.smallButtonText}>Share</Text>
-            </Pressable>
-          </View>
-        </Section>
-
-        <View style={styles.previewStack}>
-          <ViewShot ref={monthlyRef} style={styles.exportCanvas}>
-            <View collapsable={false}>
-              <Text style={styles.exportCanvasTitle}>
-                This Month - {now.toLocaleString('en-US', { month: 'long' })} {year}
+        <View style={styles.hiddenCaptures}>
+          <ViewShot ref={monthlyRef} style={styles.hiddenCapture}>
+            <View collapsable={false} style={styles.captureCanvas}>
+              <Text style={styles.captureTitle}>
+                {now.toLocaleString('en-US', { month: 'long' })} {year}
               </Text>
               <MonthlyMosaic year={year} month={month} entriesByDate={entriesByDate} />
             </View>
           </ViewShot>
-          <ViewShot ref={yearlyRef} style={styles.exportCanvas}>
-            <View collapsable={false}>
-              <Text style={styles.exportCanvasTitle}>This Year - {year}</Text>
+
+          <ViewShot ref={yearlyRef} style={styles.hiddenCapture}>
+            <View collapsable={false} style={styles.captureCanvas}>
+              <Text style={styles.captureTitle}>{year}</Text>
               <YearlyMosaic year={year} entriesByDate={entriesByDate} />
             </View>
           </ViewShot>
         </View>
-        {!settings.isPremium ? (
-          <View style={styles.paywallSection}>
-            <Text style={styles.paywallTitle}>Choose your premium plan</Text>
-            <Text style={styles.paywallText}>
-              Premium includes cloud backup, deeper insights, premium palettes, and richer export cards.
-            </Text>
-            <PremiumPlanPicker
-              products={premiumProducts}
-              busyKind={purchaseBusyKind}
-              onSelect={(kind) => void startPremiumPurchase(kind)}
-            />
-          </View>
-        ) : null}
       </View>
+
       <ConfirmationSheet
         visible={deleteModalVisible}
         title="Delete cloud account?"
-        description="This permanently removes the connected account and synced cloud data. Your local device data stays on this phone unless you delete it separately."
+        description="This permanently removes the connected account and synced cloud data. Your local device data stays on this device unless you delete it separately."
         confirmLabel="Delete"
         tone="danger"
         busy={deletingAccount}
@@ -573,36 +355,58 @@ export default function ProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     backgroundColor: '#FCFCFA',
-    paddingHorizontal: 18,
-    paddingTop: 16,
-    paddingBottom: 16,
   },
-  listCard: {
+  content: {
+    width: '100%',
+    maxWidth: 840,
+    alignSelf: 'center',
     gap: 14,
+  },
+  heroCard: {
+    borderWidth: 1,
+    borderColor: '#ECE7E0',
+    borderRadius: 24,
+    backgroundColor: '#FFFFFF',
+    padding: 20,
+    gap: 8,
+  },
+  heroEyebrow: {
+    color: '#847565',
+    fontSize: 12,
+    fontWeight: '700',
+    textTransform: 'uppercase',
+    letterSpacing: 0.8,
+  },
+  heroTitle: {
+    color: '#161616',
+    fontSize: 24,
+    lineHeight: 30,
+    fontWeight: '700',
+    maxWidth: 520,
   },
   section: {
     borderWidth: 1,
     borderColor: '#EAEAEA',
-    borderRadius: 18,
+    borderRadius: 22,
     backgroundColor: '#FFFFFF',
-    padding: 14,
-    gap: 10,
+    padding: 16,
+    gap: 12,
   },
   sectionTitle: {
     color: '#171717',
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
   },
   sectionDescription: {
     color: '#747474',
     fontSize: 12,
-    lineHeight: 17,
+    lineHeight: 18,
   },
   row: {
-    minHeight: 50,
+    minHeight: 52,
     borderWidth: 1,
     borderColor: '#EFEFEF',
-    borderRadius: 12,
+    borderRadius: 14,
     paddingHorizontal: 12,
     paddingVertical: 10,
     flexDirection: 'row',
@@ -615,10 +419,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '500',
   },
-  rowMeta: {
-    color: '#767676',
-    fontSize: 13,
-  },
   timeActions: {
     flexDirection: 'row',
     gap: 8,
@@ -626,9 +426,9 @@ const styles = StyleSheet.create({
   smallButton: {
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 7,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
     backgroundColor: '#FFFFFF',
   },
   smallButtonText: {
@@ -639,7 +439,7 @@ const styles = StyleSheet.create({
   paletteBlock: {
     borderWidth: 1,
     borderColor: '#EFEFEF',
-    borderRadius: 12,
+    borderRadius: 14,
     padding: 12,
     gap: 8,
   },
@@ -649,9 +449,9 @@ const styles = StyleSheet.create({
   paletteRow: {
     borderWidth: 1,
     borderColor: '#EAEAEA',
-    borderRadius: 10,
-    paddingHorizontal: 10,
-    paddingVertical: 10,
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
@@ -669,26 +469,21 @@ const styles = StyleSheet.create({
     color: '#8A8A8A',
     fontSize: 12,
   },
-  statusText: {
-    color: '#0F9D58',
+  exportTitle: {
+    color: '#232323',
     fontSize: 13,
     fontWeight: '700',
+    marginTop: 2,
   },
-  syncBlock: {
-    borderWidth: 1,
-    borderColor: '#EFEFEF',
-    borderRadius: 12,
-    padding: 12,
+  exportActions: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
-  },
-  syncTitle: {
-    color: '#202020',
-    fontSize: 14,
-    fontWeight: '600',
   },
   syncMessage: {
     color: '#2C2C2C',
     fontSize: 13,
+    lineHeight: 19,
   },
   syncSubtext: {
     color: '#6D6D6D',
@@ -703,20 +498,6 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     gap: 8,
   },
-  exportTitle: {
-    color: '#232323',
-    fontSize: 13,
-    fontWeight: '700',
-    marginTop: 2,
-  },
-  exportActions: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 8,
-  },
-  disabledButton: {
-    opacity: 0.5,
-  },
   dangerButton: {
     borderColor: '#E8B9B9',
     backgroundColor: '#FFF6F6',
@@ -724,37 +505,21 @@ const styles = StyleSheet.create({
   dangerText: {
     color: '#9E2E2E',
   },
-  previewStack: {
-    gap: 10,
+  hiddenCaptures: {
+    position: 'absolute',
+    opacity: 0,
+    pointerEvents: 'none',
   },
-  paywallSection: {
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
-    borderRadius: 18,
+  hiddenCapture: {
+    width: 720,
+  },
+  captureCanvas: {
     backgroundColor: '#FFFFFF',
-    padding: 14,
-    gap: 10,
-  },
-  paywallTitle: {
-    color: '#171717',
-    fontSize: 15,
-    fontWeight: '700',
-  },
-  paywallText: {
-    color: '#747474',
-    fontSize: 12,
-    lineHeight: 18,
-  },
-  exportCanvas: {
-    width: '100%',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 18,
-    borderWidth: 1,
-    borderColor: '#EAEAEA',
+    borderRadius: 24,
     padding: 24,
     gap: 14,
   },
-  exportCanvasTitle: {
+  captureTitle: {
     fontSize: 20,
     fontWeight: '800',
     color: '#1D1D1D',

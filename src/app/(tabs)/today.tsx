@@ -127,52 +127,54 @@ export default function TodayScreen() {
             Keyboard.dismiss();
           }}
         >
-          <Text style={styles.date}>{detailedDateText}</Text>
+          <View style={styles.content}>
+            <Text style={styles.date}>{detailedDateText}</Text>
 
-          <Text style={[styles.title, { fontSize: titleSize, lineHeight: titleLineHeight }]}>
-            What color was your day?
-          </Text>
+            <Text style={[styles.title, { fontSize: titleSize, lineHeight: titleLineHeight }]}>
+              What color was your day?
+            </Text>
 
-          <ColorPicker
-            moods={paletteService.getMoodDefinitions()}
-            selectedMoodId={selectedMoodId}
-            colorByMoodId={colorByMoodId}
-            onSelect={(moodId) => {
-              LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
-              setSelectedMoodId(moodId);
-              setNoteFocused(false);
-              noteInputRef.current?.blur();
-              Keyboard.dismiss();
-            }}
-          />
+            <ColorPicker
+              moods={paletteService.getMoodDefinitions()}
+              selectedMoodId={selectedMoodId}
+              colorByMoodId={colorByMoodId}
+              onSelect={(moodId) => {
+                LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+                setSelectedMoodId(moodId);
+                setNoteFocused(false);
+                noteInputRef.current?.blur();
+                Keyboard.dismiss();
+              }}
+            />
 
-          <NoteInput
-            inputRef={noteInputRef}
-            value={note}
-            onChange={setNote}
-            maxLength={100}
-            onFocus={() => {
-              setNoteFocused(true);
-              setTimeout(() => {
-                scrollRef.current?.scrollToEnd({ animated: true });
-              }, 120);
-            }}
-            onBlur={() => setNoteFocused(false)}
-          />
+            <NoteInput
+              inputRef={noteInputRef}
+              value={note}
+              onChange={setNote}
+              maxLength={100}
+              onFocus={() => {
+                setNoteFocused(true);
+                setTimeout(() => {
+                  scrollRef.current?.scrollToEnd({ animated: true });
+                }, 120);
+              }}
+              onBlur={() => setNoteFocused(false)}
+            />
 
-          <Pressable
-            onPress={handleSave}
-            disabled={saving || loading || !selectedMoodId}
-            style={({ pressed }) => [
-              styles.saveButton,
-              (saving || loading || !selectedMoodId) && styles.saveButtonDisabled,
-              pressed && styles.pressed,
-            ]}
-          >
-            <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
-          </Pressable>
+            <Pressable
+              onPress={handleSave}
+              disabled={saving || loading || !selectedMoodId}
+              style={({ pressed }) => [
+                styles.saveButton,
+                (saving || loading || !selectedMoodId) && styles.saveButtonDisabled,
+                pressed && styles.pressed,
+              ]}
+            >
+              <Text style={styles.saveButtonText}>{saving ? 'Saving...' : 'Save'}</Text>
+            </Pressable>
 
-          {noteFocused ? <Text style={styles.noteHint}>Tap outside the note field to close the keyboard.</Text> : null}
+            {noteFocused ? <Text style={styles.noteHint}>Tap outside the note field to close the keyboard.</Text> : null}
+          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </TouchableWithoutFeedback>
@@ -185,8 +187,14 @@ const styles = StyleSheet.create({
   },
   container: {
     backgroundColor: '#FCFCFA',
+    alignItems: 'center',
     gap: 24,
     minHeight: '100%',
+  },
+  content: {
+    width: '100%',
+    maxWidth: 720,
+    gap: 24,
   },
   date: {
     fontSize: 13,

@@ -6,16 +6,7 @@ export const exportService = {
   async exportMosaicFromView(params: {
     viewRef: React.RefObject<unknown>;
     quality: ExportQuality;
-    isPremium: boolean;
-    unlockHdWithAd: () => Promise<boolean>;
   }): Promise<string> {
-    if (params.quality === 'hd' && !params.isPremium) {
-      const unlocked = await params.unlockHdWithAd();
-      if (!unlocked) {
-        throw new Error('HD export was not unlocked.');
-      }
-    }
-
     const width = params.quality === 'hd' ? 3072 : 2048;
     const height = params.quality === 'hd' ? 4096 : 2732;
     const current = params.viewRef.current as { capture?: (options?: object) => Promise<string> } | null;

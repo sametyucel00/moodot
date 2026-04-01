@@ -41,7 +41,7 @@ export const DEFAULT_SETTINGS = {
   selectedPaletteId: 'classic',
   notificationsEnabled: true,
   reminderTime: '20:30',
-  isPremium: false,
+  isPremium: true,
   hasCompletedOnboarding: false,
   settingsUpdatedAt: new Date(0).toISOString(),
   cloudSyncEnabled: false,

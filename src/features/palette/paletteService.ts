@@ -14,8 +14,8 @@ export const paletteService = {
     return PALETTES.find((palette) => palette.id === paletteId);
   },
 
-  getAvailablePalettes(isPremium: boolean): Palette[] {
-    return PALETTES.filter((palette) => isPremium || !palette.isPremium);
+  getAvailablePalettes(): Palette[] {
+    return PALETTES;
   },
 
   getColorHex(paletteId: string, moodId: MoodId): string {
