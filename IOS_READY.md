@@ -9,20 +9,10 @@ Project is prepared for iOS EAS builds with:
 - GitHub Actions workflow for manual EAS iOS builds
 - GitHub Actions workflow for manual App Store Connect submission
 - App Store export-compliance flag set for standard exempt encryption use
-- AdMob SKAdNetwork identifiers added for iOS attribution support
 
 GitHub Actions secrets to add:
 
 - `EXPO_TOKEN`
-- `ADMOB_ANDROID_APP_ID`
-- `ADMOB_IOS_APP_ID`
-- `EXPO_PUBLIC_ADMOB_REWARDED_ANDROID_ID`
-- `EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID`
-- `EXPO_PUBLIC_REVENUECAT_API_KEY_IOS`
-- `EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID`
-- `EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_MONTHLY`
-- `EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_YEARLY`
-- `EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_LIFETIME`
 - `EXPO_PUBLIC_FIREBASE_API_KEY`
 - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `EXPO_PUBLIC_FIREBASE_DATABASE_URL`
@@ -42,7 +32,6 @@ Before the first iOS build, make sure these are ready:
 3. App Store Connect app exists for `com.moodot`.
 4. `EXPO_TOKEN` is added to GitHub repository secrets.
 5. EAS environment variables are present for production.
-6. RevenueCat iOS production API key is used before release builds.
 
 Suggested first build command if running manually:
 
