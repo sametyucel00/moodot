@@ -43,7 +43,6 @@ const config: ExpoConfig = {
   ios: {
     supportsTablet: false,
     bundleIdentifier: 'com.moodot',
-    buildNumber: '1',
     usesAppleSignIn: true,
     config: {
       usesNonExemptEncryption: false,

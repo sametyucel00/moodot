@@ -7,6 +7,7 @@ Project is prepared for iOS EAS builds with:
 - Apple Sign In capability
 - iOS build profile in `eas.json`
 - GitHub Actions workflow for manual EAS iOS builds
+- GitHub Actions workflow for manual App Store Connect submission
 - App Store export-compliance flag set for standard exempt encryption use
 - AdMob SKAdNetwork identifiers added for iOS attribution support
 
@@ -19,7 +20,9 @@ GitHub Actions secrets to add:
 - `EXPO_PUBLIC_ADMOB_REWARDED_IOS_ID`
 - `EXPO_PUBLIC_REVENUECAT_API_KEY_IOS`
 - `EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID`
-- `EXPO_PUBLIC_REVENUECAT_PRODUCT_ID`
+- `EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_MONTHLY`
+- `EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_YEARLY`
+- `EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_LIFETIME`
 - `EXPO_PUBLIC_FIREBASE_API_KEY`
 - `EXPO_PUBLIC_FIREBASE_AUTH_DOMAIN`
 - `EXPO_PUBLIC_FIREBASE_DATABASE_URL`

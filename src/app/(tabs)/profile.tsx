@@ -1,11 +1,12 @@
 import React from 'react';
-import { Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
+import { Platform, Pressable, ScrollView, StyleSheet, Switch, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Sharing from 'expo-sharing';
 import ViewShot from 'react-native-view-shot';
 
 import { ConfirmationSheet } from '@/src/components/ConfirmationSheet';
 import { MonthlyMosaic } from '@/src/components/MonthlyMosaic';
+import { PremiumPlanPicker } from '@/src/components/PremiumPlanPicker';
 import { YearlyMosaic } from '@/src/components/YearlyMosaic';
 import { COLORS } from '@/src/constants/theme';
 import { adService } from '@/src/features/ads/adService';
@@ -51,6 +52,7 @@ export default function ProfileScreen() {
     updateSettings,
     runSync,
     syncState,
+    premiumProducts,
     purchasePremium,
     authState,
     connectCloudAccount,
@@ -61,10 +63,12 @@ export default function ProfileScreen() {
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const availablePalettes = paletteService.getAllPalettes();
+  const supportsRewardUnlocks = Platform.OS !== 'ios';
   const [unlockingPaletteId, setUnlockingPaletteId] = React.useState<string | null>(null);
   const [unlockingExportCards, setUnlockingExportCards] = React.useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = React.useState(false);
   const [deletingAccount, setDeletingAccount] = React.useState(false);
+  const [purchaseBusyKind, setPurchaseBusyKind] = React.useState<'monthly' | 'yearly' | 'lifetime' | null>(null);
   const todayKey = getTodayKey();
   const now = new Date();
   const month = now.getMonth();
@@ -85,7 +89,30 @@ export default function ProfileScreen() {
   const providerLabel =
     authState.provider === 'apple' ? 'Apple' : authState.provider === 'google' ? 'Google' : 'Account';
 
+  const startPremiumPurchase = async (
+    kind: 'monthly' | 'yearly' | 'lifetime',
+    successMessage = 'Premium unlocked.',
+  ) => {
+    setPurchaseBusyKind(kind);
+    try {
+      const ok = await purchasePremium(kind);
+      noticeService.show(ok ? successMessage : 'Purchase not completed.', ok ? 'success' : 'error');
+      return ok;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Premium purchase failed.';
+      noticeService.show(message, 'error');
+      return false;
+    } finally {
+      setPurchaseBusyKind(null);
+    }
+  };
+
   const unlockPremiumExportCards = async () => {
+    if (!supportsRewardUnlocks) {
+      await startPremiumPurchase('yearly');
+      return;
+    }
+
     if (settings.isPremium || hasPremiumExportCardsAccess || unlockingExportCards) {
       return;
     }
@@ -110,6 +137,13 @@ export default function ProfileScreen() {
     if (!monthlyRef.current) {
       noticeService.show('Monthly export is not ready yet.', 'error');
       return;
+    }
+
+    if (Platform.OS === 'ios' && quality === 'hd' && !settings.isPremium) {
+      const purchased = await startPremiumPurchase('yearly', 'Premium unlocked. HD export is now available.');
+      if (!purchased) {
+        return;
+      }
     }
 
     try {
@@ -262,6 +296,13 @@ export default function ProfileScreen() {
                   style={[styles.paletteRow, selected && styles.paletteRowSelected]}
                   onPress={async () => {
                     if (locked) {
+                      if (!supportsRewardUnlocks) {
+                        const purchased = await startPremiumPurchase('yearly');
+                        if (purchased) {
+                          await updateSettings({ selectedPaletteId: palette.id });
+                        }
+                        return;
+                      }
                       if (unlockingPaletteId) {
                         return;
                       }
@@ -290,9 +331,13 @@ export default function ProfileScreen() {
                   <Text style={styles.paletteName}>{palette.name}</Text>
                   <Text style={styles.paletteMeta}>
                     {locked
-                      ? unlockingPaletteId === palette.id
-                        ? 'Unlocking...'
-                        : 'Watch ad (1 day)'
+                      ? supportsRewardUnlocks
+                        ? unlockingPaletteId === palette.id
+                          ? 'Unlocking...'
+                          : 'Watch ad (1 day)'
+                        : purchaseBusyKind
+                          ? 'Opening...'
+                          : 'Premium only'
                       : palette.isPremium && !settings.isPremium
                         ? 'Unlocked today'
                         : 'Available'}
@@ -311,12 +356,10 @@ export default function ProfileScreen() {
               ) : (
                 <Pressable
                   style={styles.smallButton}
-                  onPress={async () => {
-                    const ok = await purchasePremium();
-                    noticeService.show(ok ? 'Premium unlocked.' : 'Purchase not completed.', ok ? 'success' : 'error');
-                  }}
+                  disabled={!!purchaseBusyKind}
+                  onPress={() => void startPremiumPurchase('yearly')}
                 >
-                  <Text style={styles.smallButtonText}>Unlock</Text>
+                  <Text style={styles.smallButtonText}>{purchaseBusyKind ? 'Please wait' : 'Unlock'}</Text>
                 </Pressable>
               )
             }
@@ -327,15 +370,12 @@ export default function ProfileScreen() {
           {!settings.isPremium ? (
             <>
               <Text style={styles.syncMessage}>Cloud backup is available with Premium.</Text>
-              <Pressable
-                style={styles.smallButton}
-                onPress={async () => {
-                  const ok = await purchasePremium();
-                  noticeService.show(ok ? 'Premium unlocked.' : 'Purchase not completed.', ok ? 'success' : 'error');
-                }}
-              >
-                <Text style={styles.smallButtonText}>Upgrade</Text>
-              </Pressable>
+              <PremiumPlanPicker
+                products={premiumProducts}
+                busyKind={purchaseBusyKind}
+                compact
+                onSelect={(kind) => void startPremiumPurchase(kind)}
+              />
             </>
           ) : !authState.isSignedIn ? (
             <>
@@ -409,9 +449,19 @@ export default function ProfileScreen() {
 
         <Section title="Export" description="Create and share polished monthly and yearly snapshots.">
           {!hasPremiumExportCardsAccess ? (
-            <Pressable style={styles.smallButton} disabled={unlockingExportCards} onPress={unlockPremiumExportCards}>
+            <Pressable
+              style={styles.smallButton}
+              disabled={unlockingExportCards || !!purchaseBusyKind}
+              onPress={unlockPremiumExportCards}
+            >
               <Text style={styles.smallButtonText}>
-                {unlockingExportCards ? 'Unlocking...' : 'Watch Ad Unlock Share + Yearly (1 day)'}
+                {supportsRewardUnlocks
+                  ? unlockingExportCards
+                    ? 'Unlocking...'
+                    : 'Watch Ad Unlock Share + Yearly (1 day)'
+                  : purchaseBusyKind
+                    ? 'Please wait'
+                    : 'Unlock Premium'}
               </Text>
             </Pressable>
           ) : null}
@@ -475,6 +525,19 @@ export default function ProfileScreen() {
             </View>
           </ViewShot>
         </View>
+        {!settings.isPremium ? (
+          <View style={styles.paywallSection}>
+            <Text style={styles.paywallTitle}>Choose your premium plan</Text>
+            <Text style={styles.paywallText}>
+              Premium includes cloud backup, deeper insights, premium palettes, and richer export cards.
+            </Text>
+            <PremiumPlanPicker
+              products={premiumProducts}
+              busyKind={purchaseBusyKind}
+              onSelect={(kind) => void startPremiumPurchase(kind)}
+            />
+          </View>
+        ) : null}
       </View>
       <ConfirmationSheet
         visible={deleteModalVisible}
@@ -663,6 +726,24 @@ const styles = StyleSheet.create({
   },
   previewStack: {
     gap: 10,
+  },
+  paywallSection: {
+    borderWidth: 1,
+    borderColor: '#EAEAEA',
+    borderRadius: 18,
+    backgroundColor: '#FFFFFF',
+    padding: 14,
+    gap: 10,
+  },
+  paywallTitle: {
+    color: '#171717',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  paywallText: {
+    color: '#747474',
+    fontSize: 12,
+    lineHeight: 18,
   },
   exportCanvas: {
     width: '100%',

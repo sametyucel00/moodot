@@ -30,10 +30,20 @@ export const INTEGRATIONS = {
       'goog_TXWyhepaakGSWPDLDOCgddrqoFv',
       'EXPO_PUBLIC_REVENUECAT_API_KEY_ANDROID',
     ),
-    premiumProductId: readPublic(
-      process.env.EXPO_PUBLIC_REVENUECAT_PRODUCT_ID,
-      'proj24acd7ca',
-      'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID',
+    monthlyProductId: readPublic(
+      process.env.EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_MONTHLY,
+      'proj24acd7ca_monthly',
+      'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_MONTHLY',
+    ),
+    yearlyProductId: readPublic(
+      process.env.EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_YEARLY,
+      'proj24acd7ca_yearly',
+      'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_YEARLY',
+    ),
+    lifetimeProductId: readPublic(
+      process.env.EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_LIFETIME,
+      'proj24acd7ca_lifetime',
+      'EXPO_PUBLIC_REVENUECAT_PRODUCT_ID_LIFETIME',
     ),
   },
   firebase: {

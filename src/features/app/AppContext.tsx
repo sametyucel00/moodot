@@ -13,7 +13,7 @@ import { FirestoreRemoteSyncRepository, createSyncService } from '@/src/features
 import { initDb } from '@/src/storage/db';
 import { moodEntryRepository } from '@/src/storage/repositories/moodEntryRepository';
 import { userSettingsRepository } from '@/src/storage/repositories/userSettingsRepository';
-import type { MoodEntry, MoodId, UserSettings } from '@/src/types';
+import type { MoodEntry, MoodId, PremiumProductKind, PremiumProductOption, UserSettings } from '@/src/types';
 
 type SyncState = {
   lastSyncedAt?: string;
@@ -44,7 +44,9 @@ type AppContextValue = {
   connectCloudAccount: () => Promise<void>;
   disconnectCloudAccount: () => Promise<void>;
   deletePremiumCloudAccount: () => Promise<void>;
-  purchasePremium: () => Promise<boolean>;
+  premiumProducts: PremiumProductOption[];
+  refreshPremiumProducts: () => Promise<void>;
+  purchasePremium: (kind: PremiumProductKind) => Promise<boolean>;
   getEntryByDate: (date: string) => MoodEntry | undefined;
 };
 
@@ -87,6 +89,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const [syncState, setSyncState] = useState<SyncState>({ inProgress: false });
   const [authUser, setAuthUser] = useState<User | null>(authService.getCurrentUser());
   const [authLoading, setAuthLoading] = useState(true);
+  const [premiumProducts, setPremiumProducts] = useState<PremiumProductOption[]>([]);
 
   const refreshAll = async () => {
     const [allEntries, userSettings] = await Promise.all([
@@ -100,6 +103,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       ...prev,
       lastSyncedAt: userSettings.cloudLastSyncedAt,
     }));
+  };
+
+  const refreshPremiumProducts = async () => {
+    const products = await subscriptionService.getPremiumProducts();
+    setPremiumProducts(products);
   };
 
   const rescheduleReminder = async (nextSettings: UserSettings, nextEntries: MoodEntry[]) => {
@@ -185,6 +193,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           lastSyncedAt: mergedSettings.cloudLastSyncedAt,
         }));
 
+        await refreshPremiumProducts();
         await rescheduleReminder(mergedSettings, allEntries);
       } catch (error) {
         console.error('App bootstrap failed:', error);
@@ -304,8 +313,8 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     setSyncState({ inProgress: false });
   };
 
-  const purchasePremium = async () => {
-    const premium = await subscriptionService.purchasePremium();
+  const purchasePremium = async (kind: PremiumProductKind) => {
+    const premium = await subscriptionService.purchasePremium(kind);
     if (!premium) {
       return false;
     }
@@ -313,6 +322,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     await userSettingsRepository.update({ isPremium: true });
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
     setSettings(nextSettings);
+    await refreshPremiumProducts();
     return true;
   };
 
@@ -346,10 +356,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       connectCloudAccount,
       disconnectCloudAccount,
       deletePremiumCloudAccount,
+      premiumProducts,
+      refreshPremiumProducts,
       purchasePremium,
       getEntryByDate,
     }),
-    [loading, entries, settings, syncState, authState],
+    [loading, entries, settings, syncState, authState, premiumProducts],
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,12 +1,13 @@
 import React, { useEffect, useMemo, useRef } from 'react';
-import { Animated, Pressable, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
+import { Animated, ScrollView, StyleSheet, Text, View, useWindowDimensions } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { COLORS } from '@/src/constants/theme';
+import { PremiumPlanPicker } from '@/src/components/PremiumPlanPicker';
 import { useAppContext } from '@/src/features/app/AppContext';
 import { parseDateKey } from '@/src/features/mood/dateUtils';
 import { noticeService } from '@/src/features/notice/noticeService';
 import { paletteService } from '@/src/features/palette/paletteService';
+import type { PremiumProductKind } from '@/src/types';
 
 const monthLabel = (date: Date) =>
   date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
@@ -27,11 +28,25 @@ const getStreak = (dates: Set<string>) => {
 };
 
 export default function InsightsScreen() {
-  const { entries, settings, purchasePremium } = useAppContext();
+  const { entries, settings, premiumProducts, purchasePremium } = useAppContext();
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
   const fadeBase = useRef(new Animated.Value(0)).current;
   const fadePremium = useRef(new Animated.Value(0)).current;
+  const [purchaseBusyKind, setPurchaseBusyKind] = React.useState<PremiumProductKind | null>(null);
+
+  const startPremiumPurchase = async (kind: PremiumProductKind) => {
+    setPurchaseBusyKind(kind);
+    try {
+      const ok = await purchasePremium(kind);
+      noticeService.show(ok ? 'Premium unlocked.' : 'Purchase not completed.', ok ? 'success' : 'error');
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Premium purchase failed.';
+      noticeService.show(message, 'error');
+    } finally {
+      setPurchaseBusyKind(null);
+    }
+  };
 
   useEffect(() => {
     Animated.stagger(90, [
@@ -153,15 +168,12 @@ export default function InsightsScreen() {
         >
           <Text style={styles.premiumTitle}>Premium reflections</Text>
           <Text style={styles.premiumText}>Unlock weekly pattern, monthly color mix and a calm 3-month comparison.</Text>
-          <Pressable
-            style={styles.premiumButton}
-            onPress={async () => {
-              const ok = await purchasePremium();
-              noticeService.show(ok ? 'Premium unlocked.' : 'Purchase not completed.', ok ? 'success' : 'error');
-            }}
-          >
-            <Text style={styles.premiumButtonText}>Unlock Premium</Text>
-          </Pressable>
+          <PremiumPlanPicker
+            products={premiumProducts}
+            busyKind={purchaseBusyKind}
+            compact
+            onSelect={(kind) => void startPremiumPurchase(kind)}
+          />
         </Animated.View>
       ) : (
         <Animated.View
@@ -284,20 +296,6 @@ const styles = StyleSheet.create({
     color: '#747474',
     fontSize: 13,
     lineHeight: 18,
-  },
-  premiumButton: {
-    alignSelf: 'flex-start',
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: '#FFFFFF',
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-  },
-  premiumButtonText: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#242424',
   },
   barTrack: {
     flexDirection: 'row',
