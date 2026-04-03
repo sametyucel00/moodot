@@ -20,8 +20,4 @@ export const moodService = {
       note: params.note,
     });
   },
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 7493727 (Initial Moodot app setup)

@@ -53,11 +53,7 @@ export default function ProfileScreen() {
     authState,
     connectCloudAccount,
     disconnectCloudAccount,
-<<<<<<< HEAD
-    deletePremiumCloudAccount,
-=======
     deleteCloudAccount,
->>>>>>> 7493727 (Initial Moodot app setup)
     entries,
   } = useAppContext();
   const insets = useSafeAreaInsets();
@@ -340,11 +336,7 @@ export default function ProfileScreen() {
         onConfirm={async () => {
           try {
             setDeletingAccount(true);
-<<<<<<< HEAD
-            await deletePremiumCloudAccount();
-=======
                       await deleteCloudAccount();
->>>>>>> 7493727 (Initial Moodot app setup)
             setDeleteModalVisible(false);
             noticeService.show('Cloud account deleted.', 'success');
           } catch (error) {

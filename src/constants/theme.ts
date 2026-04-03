@@ -8,8 +8,4 @@ export const COLORS = {
   passive: '#F0F1F5',
   success: '#0F9D58',
   warning: '#C77700',
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 7493727 (Initial Moodot app setup)

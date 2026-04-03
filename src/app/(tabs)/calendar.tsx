@@ -284,8 +284,4 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
 });
-<<<<<<< HEAD
 
-=======
-
->>>>>>> 7493727 (Initial Moodot app setup)

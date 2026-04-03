@@ -105,8 +105,4 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
   },
-<<<<<<< HEAD
 });
-=======
-});
->>>>>>> 7493727 (Initial Moodot app setup)

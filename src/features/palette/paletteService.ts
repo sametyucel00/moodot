@@ -27,8 +27,4 @@ export const paletteService = {
     }
     return color.hex;
   },
-<<<<<<< HEAD
 };
-=======
-};
->>>>>>> 7493727 (Initial Moodot app setup)
