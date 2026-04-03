@@ -123,7 +123,11 @@ export default function InsightsScreen() {
         <View style={styles.heroCard}>
           <Text style={styles.heroEyebrow}>This month</Text>
           <Text style={styles.heroTitle}>A softer look at your color rhythm.</Text>
+<<<<<<< HEAD
           <Text style={styles.heroText}>Everything is unlocked in the paid app, so your full reflection stays in one calm place.</Text>
+=======
+          <Text style={styles.heroText}>Your full reflection stays in one calm place, with every insight available in the app.</Text>
+>>>>>>> 7493727 (Initial Moodot app setup)
         </View>
 
         <Card title="Most used color" value={insights.mostUsedMoodLabel} color={insights.mostUsedMoodColor} />

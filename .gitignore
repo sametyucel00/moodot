@@ -27,6 +27,10 @@ keys/keystore-info.txt
 npm-debug.*
 yarn-debug.*
 yarn-error.*
+<<<<<<< HEAD
+=======
+*.log
+>>>>>>> 7493727 (Initial Moodot app setup)
 
 # macOS
 .DS_Store

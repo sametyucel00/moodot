@@ -12,4 +12,8 @@ export default function Root({ children }: { children: React.ReactNode }) {
       <body>{children}</body>
     </html>
   );
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> 7493727 (Initial Moodot app setup)

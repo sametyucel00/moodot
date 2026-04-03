@@ -41,7 +41,11 @@ type AppContextValue = {
   runSync: () => Promise<void>;
   connectCloudAccount: () => Promise<void>;
   disconnectCloudAccount: () => Promise<void>;
+<<<<<<< HEAD
   deletePremiumCloudAccount: () => Promise<void>;
+=======
+  deleteCloudAccount: () => Promise<void>;
+>>>>>>> 7493727 (Initial Moodot app setup)
   getEntryByDate: (date: string) => MoodEntry | undefined;
 };
 
@@ -56,7 +60,11 @@ const syncService = createSyncService({
 const shouldSyncInBackground = (settings: UserSettings, user: User | null): boolean =>
   settings.cloudSyncEnabled && !!user;
 
+<<<<<<< HEAD
 const normalizeDailyUnlockState = (settings: UserSettings): UserSettings => {
+=======
+const normalizeSettings = (settings: UserSettings): UserSettings => {
+>>>>>>> 7493727 (Initial Moodot app setup)
   let selectedPaletteId = settings.selectedPaletteId;
   const selectedPalette = paletteService.getPaletteById(selectedPaletteId);
   if (!selectedPalette) {
@@ -65,7 +73,10 @@ const normalizeDailyUnlockState = (settings: UserSettings): UserSettings => {
 
   return {
     ...settings,
+<<<<<<< HEAD
     isPremium: true,
+=======
+>>>>>>> 7493727 (Initial Moodot app setup)
     selectedPaletteId,
   };
 };
@@ -85,7 +96,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
     ]);
 
     setEntries(allEntries);
+<<<<<<< HEAD
     setSettings(normalizeDailyUnlockState(userSettings));
+=======
+    setSettings(normalizeSettings(userSettings));
+>>>>>>> 7493727 (Initial Moodot app setup)
     setSyncState((prev) => ({
       ...prev,
       lastSyncedAt: userSettings.cloudLastSyncedAt,
@@ -145,6 +160,7 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
           userSettingsRepository.get(),
         ]);
 
+<<<<<<< HEAD
         const mergedSettings = normalizeDailyUnlockState({
           ...userSettings,
           isPremium: true,
@@ -156,6 +172,12 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
         ) {
           await userSettingsRepository.update({
             isPremium: mergedSettings.isPremium,
+=======
+        const mergedSettings = normalizeSettings(userSettings);
+
+        if (mergedSettings.selectedPaletteId !== userSettings.selectedPaletteId) {
+          await userSettingsRepository.update({
+>>>>>>> 7493727 (Initial Moodot app setup)
             selectedPaletteId: mergedSettings.selectedPaletteId,
           });
         }
@@ -187,7 +209,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   }, []);
 
   const saveTodayMood: AppContextValue['saveTodayMood'] = async ({ moodId, note }) => {
+<<<<<<< HEAD
     const normalizedSettings = normalizeDailyUnlockState(settings);
+=======
+    const normalizedSettings = normalizeSettings(settings);
+>>>>>>> 7493727 (Initial Moodot app setup)
     if (normalizedSettings.selectedPaletteId !== settings.selectedPaletteId) {
       await userSettingsRepository.update({
         selectedPaletteId: normalizedSettings.selectedPaletteId,
@@ -212,7 +238,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
 
   const updateSettings: AppContextValue['updateSettings'] = async (partial) => {
     await userSettingsRepository.update(partial);
+<<<<<<< HEAD
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
+=======
+    const nextSettings = normalizeSettings(await userSettingsRepository.get());
+>>>>>>> 7493727 (Initial Moodot app setup)
     setSettings(nextSettings);
 
     await rescheduleReminder(nextSettings, entries);
@@ -232,7 +262,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       ...partial,
       hasCompletedOnboarding: true,
     });
+<<<<<<< HEAD
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
+=======
+    const nextSettings = normalizeSettings(await userSettingsRepository.get());
+>>>>>>> 7493727 (Initial Moodot app setup)
     setSettings(nextSettings);
     await rescheduleReminder(nextSettings, entries);
   };
@@ -244,7 +278,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const connectCloudAccount = async () => {
     const signedInUser = await authService.signInForPlatform();
     await userSettingsRepository.update({ cloudSyncEnabled: true });
+<<<<<<< HEAD
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
+=======
+    const nextSettings = normalizeSettings(await userSettingsRepository.get());
+>>>>>>> 7493727 (Initial Moodot app setup)
     setSettings(nextSettings);
     await runSyncInternal({ user: signedInUser, force: true });
   };
@@ -252,11 +290,19 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
   const disconnectCloudAccount = async () => {
     await authService.signOut();
     await userSettingsRepository.update({ cloudSyncEnabled: false });
+<<<<<<< HEAD
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
     setSettings(nextSettings);
   };
 
   const deletePremiumCloudAccount = async () => {
+=======
+    const nextSettings = normalizeSettings(await userSettingsRepository.get());
+    setSettings(nextSettings);
+  };
+
+  const deleteCloudAccount = async () => {
+>>>>>>> 7493727 (Initial Moodot app setup)
     const user = authService.getCurrentUser();
     if (!user) {
       throw new Error('No connected account found.');
@@ -268,7 +314,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       cloudSyncEnabled: false,
       cloudLastSyncedAt: undefined,
     });
+<<<<<<< HEAD
     const nextSettings = normalizeDailyUnlockState(await userSettingsRepository.get());
+=======
+    const nextSettings = normalizeSettings(await userSettingsRepository.get());
+>>>>>>> 7493727 (Initial Moodot app setup)
     setSettings(nextSettings);
     setSyncState({ inProgress: false });
   };
@@ -302,7 +352,11 @@ export const AppProvider = ({ children }: { children: React.ReactNode }) => {
       runSync,
       connectCloudAccount,
       disconnectCloudAccount,
+<<<<<<< HEAD
       deletePremiumCloudAccount,
+=======
+      deleteCloudAccount,
+>>>>>>> 7493727 (Initial Moodot app setup)
       getEntryByDate,
     }),
     [loading, entries, settings, syncState, authState],

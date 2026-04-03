@@ -31,7 +31,10 @@ export type PaletteColor = {
 export type Palette = {
   id: string;
   name: string;
+<<<<<<< HEAD
   isPremium: boolean;
+=======
+>>>>>>> 7493727 (Initial Moodot app setup)
   colors: PaletteColor[];
 };
 
@@ -39,11 +42,17 @@ export type UserSettings = {
   selectedPaletteId: string;
   notificationsEnabled: boolean;
   reminderTime: string; // HH:mm
+<<<<<<< HEAD
   isPremium: boolean;
+=======
+>>>>>>> 7493727 (Initial Moodot app setup)
   hasCompletedOnboarding: boolean;
   settingsUpdatedAt: string;
   cloudSyncEnabled: boolean;
   cloudLastSyncedAt?: string;
+<<<<<<< HEAD
   adPaletteUnlockDate?: string;
   adPremiumCardsUnlockDate?: string;
+=======
+>>>>>>> 7493727 (Initial Moodot app setup)
 };

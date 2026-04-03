@@ -39,4 +39,8 @@ export const fromTimeToHourMinute = (time: string): { hour: number; minute: numb
 
 export const fromHourMinuteToTime = (hour: number, minute: number): string => {
   return `${`${hour}`.padStart(2, '0')}:${`${minute}`.padStart(2, '0')}`;
+<<<<<<< HEAD
 };
+=======
+};
+>>>>>>> 7493727 (Initial Moodot app setup)

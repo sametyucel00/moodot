@@ -73,13 +73,22 @@ export const initDb = async () => {
         DEFAULT_SETTINGS.selectedPaletteId,
         DEFAULT_SETTINGS.notificationsEnabled ? 1 : 0,
         DEFAULT_SETTINGS.reminderTime,
+<<<<<<< HEAD
         DEFAULT_SETTINGS.isPremium ? 1 : 0,
+=======
+        1,
+>>>>>>> 7493727 (Initial Moodot app setup)
         DEFAULT_SETTINGS.hasCompletedOnboarding ? 1 : 0,
         DEFAULT_SETTINGS.settingsUpdatedAt,
         DEFAULT_SETTINGS.cloudSyncEnabled ? 1 : 0,
         DEFAULT_SETTINGS.cloudLastSyncedAt ?? null,
+<<<<<<< HEAD
         DEFAULT_SETTINGS.adPaletteUnlockDate ?? null,
         DEFAULT_SETTINGS.adPremiumCardsUnlockDate ?? null,
+=======
+        null,
+        null,
+>>>>>>> 7493727 (Initial Moodot app setup)
       ],
     );
   }
